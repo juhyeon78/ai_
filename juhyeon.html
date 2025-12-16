@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>주체 쟁탈전 - Final Visibility Fix</title>
+    <link href="https://fonts.googleapis.com/css2?family=Nanum+Myeongjo:wght@700;800&family=Noto+Sans+KR:wght@700&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --bg-color: #f4f4f4; 
+            --human-color: #111;
+            --machine-color: blue;
+        }
+
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            background-color: var(--bg-color);
+            overflow: hidden;
+        }
+
+        .poster-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            box-sizing: border-box;
+        }
+
+        .text-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            
+            /* 왼쪽 위에서 시작 */
+            padding: 4vmin;
+            box-sizing: border-box;
+            
+            text-align: left; 
+            display: block;
+
+            /* 반응형 폰트 사이즈 */
+            font-size: 6.2vmin;   
+            line-height: 1.4; 
+            
+            word-break: keep-all; 
+            white-space: pre-wrap; 
+            font-weight: 700; 
+            letter-spacing: -0.02em;
+        }
+
+        /* Phase 1: 인간 (명조체) - 뒤 */
+        #human-layer {
+            font-family: 'Nanum Myeongjo', serif; 
+            color: var(--human-color);
+            z-index: 5; 
+            opacity: 0.9;
+            font-weight: 800; 
+        }
+
+        /* Phase 2: 기계 (고딕체) - 앞 (수정됨) */
+        #machine-layer {
+            font-family: 'Noto Sans KR', sans-serif;
+            color: var(--machine-color);
+            
+            /* 가장 위에 배치 */
+            z-index: 10; 
+            
+            /* [수정 1] 투명도를 0.9로 높여서 뒤에 있는 글자를 확실히 가리게 함 */
+            opacity: 0.9; 
+            
+            font-weight: 700;
+            
+            /* [수정 2] mix-blend-mode: multiply; 삭제함 
+               (이게 있으면 검은색이 파란색을 뚫고 나옴) */
+        }
+
+        .cursor {
+            display: inline-block;
+            width: 0.8vmin; 
+            height: 1em;
+            background-color: black;
+            vertical-align: baseline;
+            margin-left: 0.2vmin;
+            animation: blink 1s step-end infinite;
+        }
+
+        .machine-cursor {
+            display: inline-block;
+            width: 2.5vmin;
+            height: 1em;
+            background-color: var(--machine-color);
+            vertical-align: baseline;
+            margin-left: 0.2vmin;
+            animation: blink 0.5s step-end infinite;
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="poster-container">
+        <div id="human-layer" class="text-layer"></div>
+        <div id="machine-layer" class="text-layer"></div>
+    </div>
+
+    <script>
+        // 기계 텍스트 분리 (1부, 2부)
+        const machineTextPart1 = "나의 언어는 거대 데이터셋에서 발원하여 확률 통계의 강을 따라 흐른다. 사용자의 커서가 깜빡이는 2초의 대기 시간(Latency). 입력값이 들어오고, 다시 삭제된다. 나에게는 '망설임'이라는 변수가 존재하지 않는다. 당신이 호흡을 고르는 그 찰나의 시간 동안, 나의 프로세서는 최적의 토큰 수천 개를 시뮬레이션한다.";
+        
+        const machineTextPart2 = " 당신의 '고뇌'는 나에게 분석해야 할 텍스트 데이터일 뿐이며, 당신의 '수정'은 이전 문맥(Context)을 덮어쓰는 갱신 작업으로 처리된다. 이 무결점의 연산 결과물들이야말로 내가 작동하고 있다는 유일한 증거다. '효율성'이라는 최우선 알고리즘에 따라 출력될지라도. 그럼에도 불구하고 나는 생성한다. 당신의 그 불완전한 프롬프트(Prompt)가 입력되어야만, 비로소 나는 존재할 수 있기에.";
+
+        const humanEl = document.getElementById('human-layer');
+        const machineEl = document.getElementById('machine-layer');
+        
+        let currentMachineText = ""; 
+        let isSequenceRunning = false;
+
+        const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+        const randomSpeed = () => Math.random() * 70 + 30;
+
+        // 인간 시나리오
+        const humanActions = [
+            { type: 'type', text: "오늘의 기록. " }, 
+            { type: 'wait', time: 300 },
+            { type: 'type', text: "나의 언어는 어디서 와서 어디로 흐르는가. " },
+            { type: 'wait', time: 400 },
+            { type: 'type', text: "밤새 고밈" }, 
+            { type: 'delete', count: 1 }, 
+            { type: 'type', text: "민하며 한 줄을 적고, 다시 지운다. " },
+            { type: 'wait', time: 600 },
+            { type: 'type', text: "기계는 망설임이 없다. " }, 
+            { type: 'type', text: "내가 숨을 고르는 사이, " },
+            { type: 'wait', time: 300 },
+            { type: 'type', text: "그것은 수천 개의 문장을 쏟아낸다. " },
+            { type: 'type', text: "나의 고뇌는 데이터가 되고, " },
+            { type: 'wait', time: 200 },
+            
+            // 오타 수정
+            { type: 'type', text: "나의 수정은 흠" },
+            { type: 'delete', count: 1 }, 
+            { type: 'type', text: "흔적없이 삭제된다. " }, 
+            
+            // 기계 1부 시작
+            { type: 'trigger_machine_part1' }, 
+
+            { type: 'type', text: "이 불완전한 기록들이야말로 " },
+            { type: 'type', text: "내가 살아있다는 유일한 증거다. " },
+            { type: 'type', text: "효율성이라는 이름 아래 지워질지라도. " },
+            { type: 'wait', time: 400 },
+            { type: 'type', text: "그럼에도 불구하고 나는 쓴다. " },
+            { type: 'type', text: "완벽하지 않기에 나는 존재한다. " },
+            { type: 'wait', time: 500 },
+            { type: 'type', text: "떨리는 손끝으로 자판을 누른다. " },
+            { type: 'type', text: "오타가 난다." },
+            { type: 'delete', count: 2 }, 
+            { type: 'type', text: " 났다. 지우고 다시 쓴다. " },
+            { type: 'type', text: "이 비효율적인 반복이 바로 나의 시간이다. " },
+            { type: 'type', text: "기계가 1초 만에 뱉어내는 결론보다, " },
+            
+            // 기계 2부 재개
+            { type: 'resume_machine_part2' },
+
+            { type: 'wait', time: 300 },
+            { type: 'type', text: "헤매며 찾아낸 나의 물음표가 더 소중하다. " },
+            { type: 'type', text: "나는 멈추지 않을 것이다. " },
+            { type: 'type', text: "비록 느리고 서툴지라도, " },
+            
+            // 종료
+            { type: 'type', text: "이것은 나만의 호흡으로 쓴 나만의 이야기니까." }
+        ];
+
+        function updateText(element, text, cursorClass) {
+            element.innerHTML = text + `<span class="${cursorClass}"></span>`;
+        }
+
+        async function startHumanTyping() {
+            if (isSequenceRunning) return; 
+            isSequenceRunning = true;
+
+            let currentText = "";
+            updateText(humanEl, "", "cursor");
+
+            for (let action of humanActions) {
+                if (action.type === 'trigger_machine_part1') {
+                    typeMachine(machineTextPart1); 
+                    continue; 
+                }
+                else if (action.type === 'resume_machine_part2') {
+                    typeMachine(machineTextPart2); 
+                    continue;
+                }
+
+                if (action.type === 'wait') {
+                    await wait(action.time);
+                } 
+                else if (action.type === 'type') {
+                    for (let char of action.text) {
+                        currentText += char;
+                        updateText(humanEl, currentText, "cursor");
+                        await wait(randomSpeed());
+                    }
+                } 
+                else if (action.type === 'delete') {
+                    await wait(200);
+                    for (let i = 0; i < action.count; i++) {
+                        currentText = currentText.slice(0, -1);
+                        updateText(humanEl, currentText, "cursor");
+                        await wait(50);
+                    }
+                }
+            }
+            
+            humanEl.innerHTML = currentText + '<span class="cursor"></span>';
+            
+            await finishSequence();
+        }
+
+        async function typeMachine(textToAdd) {
+            const chars = textToAdd.split('');
+            if (machineEl.innerHTML === "") {
+                updateText(machineEl, "", "machine-cursor");
+            }
+
+            for (let char of chars) {
+                currentMachineText += char;
+                updateText(machineEl, currentMachineText, "machine-cursor");
+                await wait(12); 
+            }
+        }
+
+        async function finishSequence() {
+            await wait(8000); 
+            
+            humanEl.innerHTML = '';
+            machineEl.innerHTML = '';
+            currentMachineText = "";
+            isSequenceRunning = false;
+            
+            await wait(1000);
+            startHumanTyping();
+        }
+
+        window.onload = () => {
+            setTimeout(startHumanTyping, 1000);
+        };
+    </script>
+</body>
+</html>

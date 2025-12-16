@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<!--
+Created using JS Bin
+http://jsbin.com
+
+Copyright (c) 2025 by kimsuah26 (http://jsbin.com/pakudag/15/edit)
+
+Released under the MIT license: http://jsbin.mit-license.org
+-->
+<meta name="robots" content="noindex">
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>반영의 모자이크 (The Reflective Mosaic)</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <link rel="stylesheet" href="style.css">
+<style id="jsbin-css">
+/* 기본 설정 */
+body {
+    background-color: #000;
+    color: #fff;
+    font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+/* 유틸리티 애니메이션 */
+@keyframes fadeInUp {
+    from { opacity: 0; transform: translate3d(0, 20px, 0); }
+    to { opacity: 1; transform: translate3d(0, 0, 0); }
+}
+
+.animate-fade-in-up {
+    animation: fadeInUp 1s ease-out forwards;
+}
+
+/* 모자이크 타일 스타일 */
+.mosaic-tile {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    overflow: hidden;
+    border: 1px solid #111;
+    transition: all 0.3s ease;
+}
+
+/* 이미지 상태 스타일 */
+.tile-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: all 0.7s ease-in-out;
+}
+
+.mosaic-tile[data-type="origin"] .tile-image {
+    filter: none;
+    opacity: 1;
+}
+
+.mosaic-tile[data-type="reflection"] .tile-image {
+    filter: blur(12px) grayscale(100%);
+    opacity: 0.4;
+    transform: scale(1.05);
+}
+
+/* 활성화(Active) 상태 */
+.mosaic-tile.is-revealed .tile-image {
+    filter: blur(0) grayscale(0);
+    opacity: 1;
+    transform: scale(1);
+}
+
+/* 프롬프트 오버레이 */
+.prompt-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.85);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 1.5rem;
+    text-align: center;
+    opacity: 0;
+    transform: translateY(10px);
+    transition: all 0.5s ease;
+    pointer-events: none;
+}
+
+.mosaic-tile.is-revealed .prompt-overlay {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* 텍스트 원본 스타일 */
+.text-origin-container {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background-color: #111;
+    color: white;
+    padding: 1.5rem;
+    transition: background-color 0.3s;
+}
+.text-origin-container:hover {
+    background-color: #1f2937;
+}
+
+.origin-badge {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    padding: 1rem;
+    background: linear-gradient(to top, rgba(0,0,0,0.8), transparent);
+    color: #60a5fa;
+    font-size: 0.75rem;
+    font-family: monospace;
+    font-weight: bold;
+    opacity: 0;
+    transition: opacity 0.3s;
+}
+
+.mosaic-tile:hover .origin-badge {
+    opacity: 1;
+}
+</style>
+</head>
+<body>
+
+    <div id="app" class="min-h-screen flex flex-col">
+        
+        <section class="min-h-[80vh] flex flex-col justify-center items-center px-6 py-20 bg-black text-center">
+            <div class="max-w-2xl space-y-8 animate-fade-in-up">
+                
+                <h1 class="text-4xl md:text-6xl font-light tracking-tighter mb-4" style="font-family: 'Times New Roman', serif;">
+                    반영의 모자이크
+                    <span class="text-xl md:text-2xl text-gray-400 mt-2 block font-sans tracking-widest">The Reflective Mosaic</span>
+                </h1>
+                
+                <div class="w-16 h-px bg-gray-700 mx-auto my-8"></div>
+
+                <p class="text-lg md:text-xl leading-relaxed text-gray-300 font-light" style="font-family: 'Times New Roman', serif;">
+                    “인간의 의도와 기계의 해석이 교차하는 이 커뮤니케이션 속에서,<br/>
+                  우리의 정체성은 고정된 틀을 벗어나 새로운 차원의 이미지로 확장된다.”
+                </p>
+                
+                <p class="text-base text-gray-500 max-w-lg mx-auto leading-relaxed">
+                    AI가 생성한 이미지는 우리의 편향과 욕망을 투영한다. 
+                    우리의 정체성은 이제 우리 자신뿐만 아닌
+                    우리가 AI와 맺는 관계에 의해 공동으로 구성되고 있다.
+                </p>
+
+                <div class="pt-20 animate-bounce opacity-50">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12l7 7 7-7"/></svg>
+                </div>
+            </div>
+        </section>
+
+      <main class="w-full max-w-[1300px] mx-auto bg-black p-2 md:p-6 flex-grow flex items-center justify-center min-h-[60vh]">
+    <div id="mosaic-grid" class="grid grid-cols-4 gap-1.5 w-full"></div>
+</main>
+
+        <section class="min-h-[40vh] flex flex-col justify-center bg-black border-t border-gray-900 relative">
+            <div class="relative z-10 flex flex-col items-center justify-center text-center p-4">
+                <div class="space-y-4">
+                    <h3 class="text-2xl md:text-3xl text-white font-light tracking-wide" style="font-family: 'Times New Roman', serif;">
+                        The Reflective Mosaic
+                    </h3>
+                    <p class="text-xs text-gray-500 tracking-[0.3em] uppercase">
+                        Curated by Human & AI
+                    </p>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <div id="modal" class="fixed inset-0 z-50 hidden opacity-0 transition-opacity duration-300">
+        <div id="modal-backdrop" class="absolute inset-0 bg-black/90 backdrop-blur-sm"></div>
+        
+        <div class="relative w-full max-w-6xl h-full md:h-auto md:max-h-[85vh] m-auto inset-0 flex flex-col md:flex-row bg-[#0a0a0a] border border-gray-800 shadow-2xl overflow-hidden rounded-none md:rounded-lg top-1/2 -translate-y-1/2 transform">
+            
+            <div id="modal-visual" class="w-full md:w-2/3 bg-[#050505] flex items-center justify-center p-4 md:p-0 relative overflow-hidden group">
+            </div>
+
+            <div class="w-full md:w-1/3 border-l border-gray-800 flex flex-col">
+                <button id="modal-close" class="absolute top-4 right-4 text-gray-500 hover:text-white z-10 p-2">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                </button>
+
+                <div class="flex-1 p-8 md:p-10 overflow-y-auto flex flex-col justify-center space-y-6">
+                    <div>
+                        <span id="modal-category" class="text-xs font-mono text-blue-500 tracking-widest uppercase mb-2 block"></span>
+                        <h3 id="modal-title" class="text-2xl md:text-3xl text-white font-serif italic mb-4"></h3>
+                        <div class="w-12 h-px bg-gray-700 mb-6"></div>
+                    </div>
+                    
+                    <div id="modal-desc-container" class="space-y-4">
+                        <p id="modal-desc" class="text-gray-300 leading-relaxed font-light"></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <button id="about-btn" class="fixed top-6 right-6 z-40 text-gray-400 hover:text-white transition-colors duration-300 mix-blend-difference cursor-pointer">
+        <span class="text-xs font-sans tracking-[0.2em] uppercase border border-gray-800 px-5 py-2 rounded-full hover:border-gray-500 bg-black/50 backdrop-blur-md">About</span>
+    </button>
+
+    <div id="about-modal" class="fixed inset-0 z-[60] hidden opacity-0 transition-opacity duration-500">
+        <div id="about-backdrop" class="absolute inset-0 bg-black/90 backdrop-blur-sm cursor-pointer"></div>
+        <div class="relative z-10 max-w-xl w-full mx-4 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
+            <div class="bg-[#0a0a0a] border border-gray-800 p-8 md:p-12 text-center shadow-2xl relative">
+                
+                <h3 class="text-2xl text-white font-light italic mb-6" style="font-family: 'Times New Roman', serif;">About Exhibition</h3>
+                <div class="w-8 h-px bg-gray-800 mx-auto mb-8"></div>
+                
+                <div class="text-sm md:text-base text-gray-300 leading-loose font-light text-left break-keep space-y-4" style="font-family: 'Times New Roman', serif;">
+                    <p>
+                        <strong>'반영의 모자이크(The Reflective Mosaic)'</strong>는 인간의 고유한 정체성과 인공지능(AI)의 해석을 탐구하는 인터랙티브 디지털 전시 웹사이트입니다.
+                    </p>
+                    <p>
+                        사용자는 '나'를 정의하는 인간의 언어 데이터와 이를 시각적으로 재구성한 AI의 이미지가 하나의 모자이크처럼 얽혀 있는 모습을 마주합니다. 
+                       각 타일을 클릭하면 인간이 건넨 '프롬프트'가 AI의 알고리즘을 통해 어떻게 초현실적이고 감각적인 예술 작품으로 확장되었는지, 그 창조적 협업의 과정을 큐레이션과 함께 감상할 수 있습니다.
+                    </p>
+                    <p>
+                        이 웹사이트는 AI를 단순한 도구가 아닌 <strong>'상상을 비추는 거울이자 파트너'</strong>로 규정합니다. 텍스트와 이미지가 오가는 커뮤니케이션을 통해, 관람객은 고정된 자아를 넘어 데이터와 기술이 공명하여 만들어낸 '확장된 정체성'을 경험하게 됩니다.
+                    </p>
+                </div>
+                <button id="about-close" class="mt-10 text-xs text-gray-500 hover:text-white tracking-[0.3em] uppercase transition-colors cursor-pointer">Close Description</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+<script id="jsbin-javascript">
+// --- 1. 데이터 정의 (Data) ---
+const mosaicData = [
+    {
+        id: 'reflect-2-c', 
+        type: 'reflection',
+        parentId: 'origin-2',
+        content: { type: 'image', src: 'https://th.bing.com/th/id/OIG3.6WikB9uLYlgmeL8sS7n.?w=1024&h=1024&rs=1&pid=ImgDetMain&o=7&rm=3' },
+        prompt: "Prompt: 내면의 '열정'과, 겉으로 드러나는 '냉소'와 '침착함'이 한 얼굴에 존재하는 '모순'을 시각화한 인물화."
+    },
+    {
+        id: 'reflect-1-a',
+        type: 'reflection',
+        parentId: 'origin-1',
+        content: { type: 'image', src: 'https://i.imgur.com/O4PBATq.jpeg' },
+        prompt: "Prompt: '단순함', '화려함', '새벽', '무채색', '향수'을 가진 사람의 초상화를 추상적인 유화 스타일."
+    },
+    {
+        id: 'reflect-3-c',
+        type: 'reflection',
+        parentId: 'origin-3',
+        content: { type: 'image', src: 'https://i.imgur.com/bJTu4PE.jpeg' },
+        prompt: "Prompt: '질서'를 상징하는 대칭의 미래지향적 건축물과 그 중앙에서 '자유'를 상징하는 황금색 빛이 폭발하듯 흘러나와 구조를 깨뜨리는 모습."
+    },
+    {
+        id: 'reflect-1-b',
+        type: 'reflection',
+        parentId: 'origin-1',
+        content: { type: 'image', src: 'https://i.imgur.com/LOcQRnN.jpeg' },
+        prompt: "Prompt: 이 키워드들의 내면 심리를 표현한 추상적인 디지털 아트."
+    },
+    {
+        id: 'origin-1',
+        type: 'origin',
+        category: 'text-portrait',
+        content: {
+            type: 'text',
+            title: 'KEYWORDS',
+            text: ['단순함', '화려함', '새벽', '무채색', '향수']
+        },
+        description: "나를 정의하는 5가지 키워드. 이 단어들은 나의 정체성을 구성하는 가장 기초적인 조각들이다."
+    },
+    {
+        id: 'reflect-2-a',
+        type: 'reflection',
+        parentId: 'origin-2',
+        content: { type: 'image', src: 'https://i.imgur.com/r6MFkt5.jpeg' },
+        prompt: "Prompt: '열정'과 '냉소', '불안'과 '침착함'이 공존하는 모순적인 인간의 내면을 표현한 초현실주의 인물화."
+    },
+    {
+        id: 'reflect-2-b',
+        type: 'reflection',
+        parentId: 'origin-2',
+        content: { type: 'image', src: 'https://i.imgur.com/n3tj5P4.jpeg' },
+        prompt: "Prompt: '침착'하고 '차가운' 모습이지만, 이미지가 겹치거나 깨지는 효과를 통해 내면의 '불안'과 '열정'이 요동치는 상태를 표현."
+    },
+    {
+        id: 'origin-3',
+        type: 'origin',
+        category: 'text-portrait',
+        content: {
+            type: 'text',
+            title: 'VALUES',
+            text: ['자유', '고독', '연결', '창조', '질서']
+        },
+        description: "내가 지향하는 추상적 가치. 삶의 방향성을 결정짓는 나침반과 같다."
+    },
+    {
+        id: 'reflect-1-c',
+        type: 'reflection',
+        parentId: 'origin-1',
+        content: { type: 'image', src: 'https://th.bing.com/th/id/OIG1.rZcRMVqORalYAIZ7u2nD?pid=ImgGn' },
+        prompt: "Prompt: 절제된 무채색과 빛나는 소재의 화려한 대비, 그 위로 내려앉은 새벽의 차가운 향수를 의인화."
+    },
+    {
+        id: 'reflect-3-a',
+        type: 'reflection',
+        parentId: 'origin-3',
+        content: { type: 'image', src: 'https://i.imgur.com/exyNPkE.jpeg' },
+        prompt: "Prompt: '자유'와 '고독' 사이에서 '창조'를 갈망하는 인간의 모습을 사이버펑크 스타일의 미래지향적 인물로 표현."
+    },
+    {
+        id: 'origin-2',
+        type: 'origin',
+        category: 'text-portrait',
+        content: {
+            type: 'text',
+            title: 'TRAITS',
+            text: ['열정', '냉소', '모순', '불안', '침착함']
+        },
+        description: "나의 복합적인 내면 특성. 상반된 감정들이 공존하며 균형을 이룬다."
+    },
+    {
+        id: 'reflect-3-b',
+        type: 'reflection',
+        parentId: 'origin-3',
+        content: { type: 'image', src: 'https://i.imgur.com/UAN3KWv.jpeg' },
+        prompt: "Prompt: '모순'된 감정들이 충돌하고 폭발하는 내면의 에너지를 표현한 강렬한 색채의 추상화."
+    }
+];
+
+// --- 2. 렌더링 로직 (Rendering Logic) ---
+const gridContainer = document.getElementById('mosaic-grid');
+
+function renderGrid() {
+    gridContainer.innerHTML = ''; // 초기화
+
+    mosaicData.forEach(item => {
+        const tile = document.createElement('div');
+        tile.className = 'mosaic-tile cursor-pointer'; 
+        tile.dataset.id = item.id;
+        tile.dataset.type = item.type;
+        if (item.parentId) tile.dataset.parentId = item.parentId;
+
+        tile.addEventListener('click', () => openModal(item));
+
+        let innerContent = '';
+
+        if (item.content.type === 'text') {
+            const wordsHtml = item.content.text.map((word, idx) => 
+                `<span class="text-xl md:text-2xl font-bold text-gray-200" style="font-family: serif;">${word}</span>
+                 ${idx < item.content.text.length - 1 ? '<span class="text-gray-600 font-light mx-1">·</span>' : ''}`
+            ).join('');
+
+            innerContent = `
+                <div class="text-origin-container">
+                    <span class="text-xs uppercase tracking-[0.3em] text-gray-500 mb-4 border-b border-gray-700 pb-2">${item.content.title}</span>
+                    <div class="flex flex-wrap gap-2 justify-center">${wordsHtml}</div>
+                    <div class="absolute bottom-4 right-4 text-xs text-blue-400 font-mono opacity-0 transition-opacity duration-300 group-hover:opacity-100">[ORIGIN PIECE]</div>
+                </div>
+            `;
+        } else {
+            innerContent = `
+                <div class="w-full h-full relative group-hover:brightness-110 transition-all">
+                    <img src="${item.content.src}" alt="Artwork" class="tile-image" />
+                    ${item.type === 'origin' ? `
+                        <div class="origin-badge">[ORIGIN]</div>
+                    ` : ''}
+                </div>
+            `;
+        }
+
+        if (item.type === 'reflection') {
+            innerContent += `
+                <div class="prompt-overlay">
+                    <svg class="text-green-500 mb-2" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                    <span class="text-xs text-green-400 font-mono tracking-widest uppercase">Click to View</span>
+                </div>
+            `;
+        }
+
+        tile.innerHTML = innerContent;
+        gridContainer.appendChild(tile);
+    });
+}
+
+// --- 3. 이미지 모달 로직 (Image Modal Logic) ---
+const modal = document.getElementById('modal');
+const modalBackdrop = document.getElementById('modal-backdrop');
+const modalCloseBtn = document.getElementById('modal-close');
+const modalVisual = document.getElementById('modal-visual');
+const modalCategory = document.getElementById('modal-category');
+const modalTitle = document.getElementById('modal-title');
+const modalDesc = document.getElementById('modal-desc');
+const modalId = document.getElementById('modal-id');
+
+function openModal(item) {
+    if (item.content.type === 'text') {
+        const wordsHtml = item.content.text.map(word => 
+            `<span class="text-3xl md:text-5xl font-light text-white m-3" style="font-family: 'Times New Roman', serif;">${word}</span>`
+        ).join('');
+        
+        modalVisual.innerHTML = `
+            <div class="flex flex-col items-center justify-center h-full p-12 text-center bg-[#050505]">
+                <div class="flex flex-wrap justify-center leading-relaxed">${wordsHtml}</div>
+                <div class="mt-12 w-8 h-px bg-gray-800"></div>
+                <div class="mt-4 text-xs text-gray-600 font-sans tracking-[0.3em] uppercase">Origin Text Data</div>
+            </div>
+        `;
+    } else {
+        modalVisual.innerHTML = `
+            <div class="w-full h-full flex items-center justify-center bg-black">
+                <img src="${item.content.src}" class="max-w-full max-h-[80vh] object-contain shadow-2xl" />
+            </div>
+        `;
+    }
+
+    modalCategory.className = "text-xs font-medium text-gray-500 tracking-[0.3em] uppercase mb-3 block";
+    modalTitle.className = "text-3xl md:text-4xl text-white font-light mb-6 tracking-tight";
+    modalTitle.style.fontFamily = "'Times New Roman', serif";
+
+    const descContainer = document.getElementById('modal-desc-container');
+    descContainer.innerHTML = ''; 
+
+    if (item.type === 'origin') {
+        modalCategory.innerText = "Origin Source";
+        modalTitle.innerText = item.content.title || "The Archive";
+        modalDesc.className = "text-lg md:text-xl text-gray-300 font-light leading-loose";
+        modalDesc.style.fontFamily = "'Times New Roman', serif";
+        modalDesc.innerHTML = `
+            <span class="text-4xl float-left mr-2 h-4 leading-8 text-gray-500">“</span>
+            ${item.description}
+        `;
+    } else {
+        modalCategory.innerText = "Reflection Piece";
+        modalTitle.innerText = "Prompt Engineering";
+        modalDesc.className = ""; 
+        
+        const promptLabel = document.createElement('div');
+        promptLabel.className = "text-xs text-blue-400 font-bold tracking-widest uppercase mb-2";
+        promptLabel.innerText = "Prompt Input";
+
+        const promptText = document.createElement('p');
+        promptText.className = "text-base md:text-lg text-gray-200 font-light leading-8 tracking-wide text-justify opacity-90";
+        promptText.style.fontFamily = "ui-sans-serif, system-ui, sans-serif"; 
+        promptText.innerText = item.prompt.replace("Prompt:", "").trim(); 
+
+        descContainer.appendChild(promptLabel);
+        descContainer.appendChild(promptText);
+        
+        const decoLine = document.createElement('div');
+        decoLine.className = "w-full h-px bg-gradient-to-r from-gray-800 to-transparent my-6";
+        descContainer.appendChild(decoLine);
+        
+        // [삭제됨] 하단 영어 설명 문구 제거
+
+        modalDesc.innerText = "";
+    }
+
+    modal.classList.remove('hidden');
+    setTimeout(() => {
+        modal.classList.remove('opacity-0');
+    }, 50);
+}
+
+function closeModal() {
+    modal.classList.add('opacity-0');
+    setTimeout(() => {
+        modal.classList.add('hidden');
+        modalVisual.innerHTML = ''; 
+    }, 300);
+}
+
+if (modalCloseBtn) modalCloseBtn.addEventListener('click', closeModal);
+if (modalBackdrop) modalBackdrop.addEventListener('click', closeModal);
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closeModal();
+});
+
+// --- 4. 인터랙션 로직 (Interaction Logic) ---
+function handleInteraction() {
+    const tiles = document.querySelectorAll('.mosaic-tile');
+
+    tiles.forEach(tile => {
+        tile.addEventListener('mouseenter', () => {
+            const currentId = tile.dataset.id;
+            
+            tiles.forEach(t => {
+                const isSelf = t.dataset.id === currentId;
+                const isChildOfCurrent = t.dataset.parentId === currentId;
+                const isParentOfCurrent = tile.dataset.parentId === t.dataset.id;
+                
+                if (t.dataset.type === 'reflection') {
+                    if (isSelf || isChildOfCurrent) {
+                        t.classList.add('is-revealed');
+                    }
+                }
+            });
+        });
+
+        tile.addEventListener('mouseleave', () => {
+            tiles.forEach(t => t.classList.remove('is-revealed'));
+        });
+    });
+}
+
+// --- 5. About 모달 로직 (About Modal Logic) ---
+const aboutBtn = document.getElementById('about-btn');
+const aboutModal = document.getElementById('about-modal');
+const aboutBackdrop = document.getElementById('about-backdrop');
+const aboutClose = document.getElementById('about-close');
+
+function toggleAbout() {
+    if (!aboutModal) return;
+    const isHidden = aboutModal.classList.contains('hidden');
+    if (isHidden) {
+        aboutModal.classList.remove('hidden');
+        setTimeout(() => aboutModal.classList.remove('opacity-0'), 10);
+    } else {
+        aboutModal.classList.add('opacity-0');
+        setTimeout(() => aboutModal.classList.add('hidden'), 500);
+    }
+}
+
+if (aboutBtn) aboutBtn.addEventListener('click', toggleAbout);
+if (aboutBackdrop) aboutBackdrop.addEventListener('click', toggleAbout);
+if (aboutClose) aboutClose.addEventListener('click', toggleAbout);
+
+// 실행
+renderGrid();
+handleInteraction();
+</script>
+</body>
+</html>
